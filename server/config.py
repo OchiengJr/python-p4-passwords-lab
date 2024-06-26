@@ -1,19 +1,25 @@
-from flask import Flask
-from flask_bcrypt import Bcrypt
-from flask_migrate import Migrate
-from flask_restful import Api
-from flask_sqlalchemy import SQLAlchemy
+def pytest_itemcollected(item):
+    """
+    Customize the node IDs for collected pytest items based on docstrings or class names.
 
-app = Flask(__name__)
-app.secret_key = b'Y\xf1Xz\x00\xad|eQ\x80t \xca\x1a\x10K'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = False
+    Args:
+        item (pytest.Item): Pytest item representing a test function or method.
 
-db = SQLAlchemy()
-migrate = Migrate(app, db)
-db.init_app(app)
+    Returns:
+        None
+    """
+    try:
+        # Retrieve the parent and node objects
+        par = item.parent.obj if hasattr(item, 'parent') and item.parent else None
+        node = item.obj if hasattr(item, 'obj') and item.obj else None
+        
+        # Determine the prefix and suffix for the node ID
+        pref = par.__doc__.strip() if par and par.__doc__ else par.__class__.__name__ if par else None
+        suf = node.__doc__.strip() if node and node.__doc__ else node.__name__ if node else None
+        
+        # Construct the node ID if either prefix or suffix is available
+        if pref or suf:
+            item._nodeid = ' '.join(filter(None, (pref, suf)))
+    except Exception as e:
+        print(f"Error customizing node ID for item: {e}")
 
-bcrypt = Bcrypt(app)
-
-api = Api(app)
